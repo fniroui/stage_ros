@@ -10,6 +10,8 @@ find_package(catkin REQUIRED
     std_msgs
     std_srvs
     tf
+    rospy
+    message_generation
 )
 
 find_package(Boost REQUIRED COMPONENTS system thread)
@@ -22,7 +24,18 @@ include_directories(
   ${STAGE_INCLUDE_DIRS}
 )
 
-catkin_package()
+add_service_files(
+  FILES
+  set_pose.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+  std_msgs  
+)
+
+catkin_package(CATKIN_DEPENDS message_runtime std_msgs geometry_msgs)
 
 # Declare a cpp executable
 add_executable(stageros src/stageros.cpp)
@@ -39,6 +52,8 @@ target_link_libraries(stageros
 if(catkin_EXPORTED_TARGETS)
   add_dependencies(stageros ${catkin_EXPORTED_TARGETS})
 endif()
+
+add_dependencies(stageros stage_ros_gencpp)
 
 ## Install
 

@@ -50,6 +50,7 @@
 #include <rosgraph_msgs/Clock.h>
 
 #include <std_srvs/Empty.h>
+#include "stage_ros/set_pose.h"
 
 #include "tf/transform_broadcaster.h"
 
@@ -103,6 +104,7 @@ private:
     // Used to remember initial poses for soft reset
     std::vector<Stg::Pose> initial_poses;
     ros::ServiceServer reset_srv_;
+    ros::ServiceServer set_pose_srv_;
   
     ros::Publisher clock_pub_;
     
@@ -163,6 +165,7 @@ public:
 
     // Service callback for soft reset
     bool cb_reset_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+    bool cb_set_pose_srv(stage_ros::set_pose::Request& request, stage_ros::set_pose::Response& response);
 
     // The main simulator object
     Stg::World* world;
@@ -240,9 +243,6 @@ StageNode::ghfunc(Stg::Model* mod, StageNode* node)
         node->cameramodels.push_back(dynamic_cast<Stg::ModelCamera *>(mod));
 }
 
-
-
-
 bool
 StageNode::cb_reset_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
 {
@@ -254,7 +254,18 @@ StageNode::cb_reset_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Resp
   return true;
 }
 
-
+bool
+StageNode::cb_set_pose_srv(stage_ros::set_pose::Request& request, stage_ros::set_pose::Response& response)
+{
+  ROS_INFO("Teleporting to pose!");
+  Stg::Pose tmp(request.robot.x, request.robot.y, 0, 0);
+  for (size_t r = 0; r < this->positionmodels.size(); r++) {
+    this->positionmodels[r]->SetPose(this->initial_poses[r] + tmp);
+    this->positionmodels[r]->SetStall(false);
+    response.result = true;
+  }
+  return true;
+}
 
 void
 StageNode::cmdvelReceived(int idx, const boost::shared_ptr<geometry_msgs::Twist const>& msg)
@@ -386,6 +397,8 @@ StageNode::SubscribeModels()
 
     // advertising reset service
     reset_srv_ = n_.advertiseService("reset_positions", &StageNode::cb_reset_srv, this);
+    set_pose_srv_ = n_.advertiseService("set_positions", &StageNode::cb_set_pose_srv, this);
+
 
     return(0);
 }
